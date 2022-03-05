@@ -1,0 +1,95 @@
+---
+title: "Final Project"
+author: "Cameron Pick"
+date: "3/07/2021"
+output: word_document
+---
+
+```{r , include=TRUE}
+setwd("C:/Users/camer/OneDrive/Documents/dsc520/data")
+library(lmtest)
+library(car)
+library(MASS)
+insurance <-read.csv("insurance.csv")
+model <- lm(expenses ~., data = insurance)
+summary(model)
+# Linearity of the data
+plot(model,1)
+# Normality of residuals
+plot(model,2)
+sresid <- studres(model) 
+shapiro.test(sresid)
+plot(model,5)
+plot(model,4)
+# Testing the Homoscedasticity Assumption
+plot(model,3)
+ncvTest(model)
+bptest(model)
+# Testing the Independence Assumption
+durbinWatsonTest(model)
+# Testing the Multicollinearity Assumption
+vif(model)
+hist(insurance$expenses)
+
+```
+There appears to be issues with normality of residuals and Homoscedasticity. First, I want to identify outliers and drop those. Then, drop not statistically important variables. The histogram shows the dependent variable is skewed. 
+```{r, include = True}
+cook <- cooks.distance(model)
+plot(cook, pch="*", cex=2, main="Influential Obs by Cooks distance")
+abline(h = 4*mean(cook, na.rm=T), col="red") 
+text(x=1:length(cook)+1, y=cook, labels=ifelse(cook>4*mean(cook, na.rm=T),names(cook),""), col="red")
+influential <- as.numeric(names(cook)[(cook > 4*mean(cook, na.rm=T))]) 
+insurance1 <-insurance[(-influential),]
+insurance2<-insurance1[!(insurance1$region == "northwest"),]
+insurance3 <- insurance2[-c(2)]
+```
+I might try a transformation on dependent to help.
+```{r, include=True}
+bcm <- boxcox(expenses ~., data=insurance3)
+lambda <- bcm$x
+lik <- bcm$y
+bc <- cbind(lambda, lik)
+sorted_bc <- bc[order(-lik),]
+head(sorted_bc, n = 10)
+model1 <- lm(expenses^.26 ~ ., data = insurance3)
+summary(model1)
+# Linearity of the data
+plot(model1,1)
+# Normality of residuals
+plot(model1,2)
+qqPlot(model1)
+sresid1 <- studres(model1) 
+hist(sresid1)
+shapiro.test(sresid1)
+plot(model1,5)
+plot(model1,4)
+# Testing the Homoscedasticity Assumption
+plot(model1,3)
+ncvTest(model1)
+bptest(model1)
+# Testing the Independence Assumption
+durbinWatsonTest(model1)
+# Testing the Multicollinearity Assumption
+vif(model1)
+
+```
+It appears neither is satisfied. 
+```{r, include=True}
+pred1 <- predict(model1, newdata=data.frame(age=64, bmi=40, children=2, smoker="yes", region="southeast") 
+)
+pred1^3.85
+pred2 <- predict(model1, newdata=data.frame(age=30, bmi=20, children=2, smoker="yes", region="southeast") 
+)
+pred2^3.85
+pred3 <- predict(model1, newdata=data.frame(age=60, bmi=40, children=2, smoker="no", region="southeast"))
+pred3^3.85
+mean(insurance$expenses)
+median(insurance$expenses)
+var1 <- var(insurance$expenses)
+var1^(1/2)
+```
+After doing the cleaning and creating the final model, let's answer questions using the analysis performed. This is in a separate word document.
+
+
+
+
